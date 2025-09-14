@@ -2,14 +2,14 @@ import express from "express";
 import { createClient } from "bedrock-protocol";
 
 // --------------------
-// Cấu hình server
+// Cấu hình server Minecraft
 // --------------------
 const SERVER_IP = "103.139.154.10";
 const SERVER_PORT = 30065;
 const BOT_NAME = "AFK_Bot";
 
 // --------------------
-// HTTP server để Render & UptimeRobot
+// HTTP server để Render & UptimeRobot ping
 // --------------------
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,14 +42,15 @@ function startBot() {
     reconnectAttempts = 0; // reset khi connect thành công
   });
 
+  // Hàm xử lý reconnect
   const handleDisconnect = (reason) => {
     reconnectAttempts++;
     console.log(`[${new Date().toLocaleTimeString()}] Bot mất kết nối: ${reason}`);
     
-    // Tính delay tăng dần
+    // Delay tăng dần
     let delay;
     if (reconnectAttempts <= MAX_FAST_RETRIES) {
-      delay = BASE_DELAY; // 10 giây cho các lần reconnect đầu
+      delay = BASE_DELAY;
     } else {
       delay = Math.min(BASE_DELAY * reconnectAttempts, 60000); // tối đa 60 giây
     }
@@ -63,9 +64,13 @@ function startBot() {
 
   bot.on("error", (err) => {
     console.log(`[${new Date().toLocaleTimeString()}] Lỗi: ${err}`);
+    // Nếu server chưa sẵn sàng (reset) → reconnect
+    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+      handleDisconnect(err.code);
+    }
   });
 
-  // Giữ bot hoạt động
+  // Giữ bot hoạt động để tránh AFK kick
   setInterval(() => {
     try {
       bot.queue("move", { x: 0, y: 0, z: 0 });
@@ -73,5 +78,5 @@ function startBot() {
   }, 60000);
 }
 
-// Bắt đầu bot lần đầu
+// Khởi động bot lần đầu
 startBot();
